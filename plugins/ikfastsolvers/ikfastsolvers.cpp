@@ -28,6 +28,7 @@ namespace ik_pr2_rightarm_torso { IkSolverBasePtr CreateIkSolver(EnvironmentBase
 namespace ik_schunk_lwa3 { IkSolverBasePtr CreateIkSolver(EnvironmentBasePtr, std::istream& sinput, const std::vector<dReal>&vfreeinc); }
 namespace ik_katana5d { IkSolverBasePtr CreateIkSolver(EnvironmentBasePtr, std::istream& sinput, const std::vector<dReal>&vfreeinc); }
 namespace ik_katana5d_trans { IkSolverBasePtr CreateIkSolver(EnvironmentBasePtr, std::istream& sinput, const std::vector<dReal>&vfreeinc); }
+namespace ik_irp6_postument { IkSolverBasePtr CreateIkSolver(EnvironmentBasePtr, std::istream& sinput, const std::vector<dReal>&vfreeinc); }
 
 IkSolverBasePtr CreateIkSolverFromName(const string& _name, const std::vector<dReal>& vfreeinc, EnvironmentBasePtr penv);
 ModuleBasePtr CreateIkFastModule(EnvironmentBasePtr penv, std::istream& sinput);
@@ -87,6 +88,9 @@ InterfaceBasePtr CreateInterfaceValidated(InterfaceType type, const std::string&
             else if( interfacename == "ikfast_katana5d_trans" ) {
                 return ik_katana5d_trans::CreateIkSolver(penv, sinput, vfreeinc);
             }
+            else if( interfacename == "ikfast_irp6_postument" ) {
+                return ik_irp6_postument::CreateIkSolver(penv, sinput, vfreeinc);
+            }
         }
         break;
     }
@@ -118,6 +122,7 @@ void GetPluginAttributesValidated(PLUGININFO& info)
     info.interfacenames[PT_IkSolver].push_back("ikfast_schunk_lwa3");
     info.interfacenames[PT_IkSolver].push_back("ikfast_katana5d");
     info.interfacenames[PT_IkSolver].push_back("ikfast_katana5d_trans");
+    info.interfacenames[PT_IkSolver].push_back("ikfast_irp6_postument");
 }
 
 OPENRAVE_PLUGIN_API void DestroyPlugin()

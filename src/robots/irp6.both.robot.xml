@@ -1,0 +1,24 @@
+<robot file="irp6both.zae">
+	<Manipulator name="postument">
+		<effector>link6_p</effector>
+		<base>base_link_p</base>
+		<joints>Irp6ptfgJoint1</joints>
+		<!-- joint values of the closed and opened positions -->
+		<closingdirection>1</closingdirection>
+		<direction>1</direction>
+		<!-- grasp goal with respect to the effector -->
+		<Translation>0 0 0.175</Translation>
+		<IkSolver>ikfast_irp6_postument</IkSolver>
+	</Manipulator>
+	<Manipulator name="track">
+		<effector>link6ot</effector>
+		<base>base_link_ot</base>
+		<joints>Irp6ottfgJoint1</joints>
+		<!-- joint values of the closed and opened positions -->
+		<closingdirection>1</closingdirection>
+		<direction>1</direction>
+		<!-- grasp goal with respect to the effector -->
+		<Translation>0 0 0.175</Translation>
+		<!--IkSolver>PUMAikfast</IkSolver-->
+	</Manipulator>
+</robot>
