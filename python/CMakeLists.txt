@@ -1,5 +1,8 @@
 add_subdirectory(bindings)
 
+#Install python irp6 Kinematic plugin interface
+install(FILES irp6kinematic.py DESTINATION ${OPENRAVE_PYTHON_INSTALL_DIR} PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ COMPONENT ${COMPONENT_PREFIX}irp6kinematic)
+
 if( OPT_BUILD_PACKAGE_DEFAULT )
   set(OPENRAVEPY_EGG "${CMAKE_CURRENT_BINARY_DIR}/openravepy.egg-info")
   configure_file("${CMAKE_CURRENT_SOURCE_DIR}/openravepy.egg-info.in" "${OPENRAVEPY_EGG}" IMMEDIATE @ONLY)
