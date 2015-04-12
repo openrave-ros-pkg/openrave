@@ -14,31 +14,6 @@ if not __openravepy_build_doc__:
     from openravepy import *
     from numpy import *
 
-def quaternion_matrix(quaternion):
-    """Return homogeneous rotation matrix from quaternion.
-
-    >>> M = quaternion_matrix([0.99810947, 0.06146124, 0, 0])
-    >>> numpy.allclose(M, rotation_matrix(0.123, [1, 0, 0]))
-    True
-    >>> M = quaternion_matrix([1, 0, 0, 0])
-    >>> numpy.allclose(M, numpy.identity(4))
-    True
-    >>> M = quaternion_matrix([0, 1, 0, 0])
-    >>> numpy.allclose(M, numpy.diag([1, -1, -1, 1]))
-    True
-
-    """
-    _EPS = numpy.finfo(float).eps * 4.0
-    q = numpy.array(quaternion, dtype=numpy.float64, copy=True)
-    n = numpy.dot(q, q)
-    if n < _EPS:
-        return numpy.identity(4)
-    q *= math.sqrt(2.0 / n)
-    q = numpy.outer(q, q)
-    return numpy.array([
-        1.0-q[2, 2]-q[3, 3],     q[1, 2]-q[3, 0],     q[1, 3]+q[2, 0],
-            q[1, 2]+q[3, 0], 1.0-q[1, 1]-q[3, 3],     q[2, 3]-q[1, 0],
-            q[1, 3]-q[2, 0],     q[2, 3]+q[1, 0], 1.0-q[1, 1]-q[2, 2]])
 def quaternion_to_matrix(q):
 	X=q[0];
 	Y=q[1];
@@ -82,7 +57,7 @@ def solveIKPost(env,goalRQ,goalT):
 	#Call plugin 
 	prob = RaveCreateModule(env,"irp6kinematic")
 	env.AddModule(prob,args='')
-	strResult = prob.SendCommand('ikSolvePost' + arguments) # whole list as a string
+	strResult = prob.SendCommand('solveIKPost' + arguments) # whole list as a string
 	#print strResult
 	
 	#convert string to list of numbers

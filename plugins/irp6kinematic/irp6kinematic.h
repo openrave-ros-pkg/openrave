@@ -27,16 +27,17 @@
 class Irp6Kinematic : public ModuleBase
 {
 public:
-    Irp6Kinematic(EnvironmentBasePtr penv) : ModuleBase(penv)
+    Irp6Kinematic(EnvironmentBasePtr penv) : ModuleBase(penv),EPS(1e-10)
     {
 		__description=":Interface Author: Rosen Diankov\n\nSimple text-based server using sockets.";
-		RegisterCommand("ikSolvePost",boost::bind(&Irp6Kinematic::ikSolvePost, this,_1,_2),"solves ik for postument");
+		RegisterCommand("solveIKPost",boost::bind(&Irp6Kinematic::solveIKPost, this,_1,_2),"solves ik for postument");
         //RegisterCommand("fkSolvePost",boost::bind(&Irp6Kinematic::fkSolvePost, this,_1,_2),"solves fk for postument");
         
 		a2 = 0.455;
 		a3 = 0.67;
 		d5 = 0.19;
 		d6 = 0.25;
+		z_offset_const=0.95;
     }
 
     virtual ~Irp6Kinematic()
@@ -60,52 +61,87 @@ public:
     }
 
 
-
+	
 protected:
-	bool ikSolvePost(ostream& sout, istream& sinput)
+	bool solveIKPost(ostream& sout, istream& sinput)
 	{
-		double z_offset_const=0.95;
 		
-		std::vector<double> local_desired_joints(6);
+		std::vector<double> dstJoints(6);
 
-		// Stale
-		const double EPS = 1e-10;
+		// Wczytanie zadanej pozycji z strumienia wejsciowego	
+		std::vector<double> transMatrix;
+		for(int i=0; i<12;i++)
+		{
+			double tmp;
+			sinput >> tmp;
+			transMatrix.push_back(tmp);
+		}
+		
+		bool foundSolution = solveIKIrp6(transMatrix,dstJoints);
+		
+		//Wypisanie wyniku do strumienia
+		sout << dstJoints[0];
+		sout << " ";
+		sout << dstJoints[1];
+		sout << " ";
+		sout << dstJoints[2];
+		sout << " ";
+		sout << dstJoints[3];
+		sout << " ";
+		sout << dstJoints[4];
+		sout << " ";
+		sout << dstJoints[5];
+		return foundSolution;	
+	}
+	
+	bool solveIKIrp6( std::vector<double> transMatrix, std::vector<double>& dstJoints)
+	{
+
+		/*	tm(0)	tm(1)	tm(2)	tm(9)
+		*	tm(3)	tm(4)	tm(5)	tm(10)
+		*	tm(6)	tm(7)	tm(8)	tm(11)
+		*
+		*				|
+		*				V
+		*
+		*	Nx		Ox		Ax		Px 
+		*	Ny		Oy		Ay		Py  
+		*	Nz		Oz		Az		Pz
+		*/
 
 		// Zmienne pomocnicze.
-		double Nx, Ox, Ax, Px;
-		double Ny, Oy, Ay, Py;
-		double Nz, Oz, Az, Pz;
+		double Nx,  Ox,  Ax, Px;
+		double Ny,  Oy,  Ay, Py;
+		double Nz,/*Oz*/ Az, Pz;	//Oz unused
 		double s0, c0, s1, c1, s3, c3, s4, c4;
 		bool osobliwosc =false;
 		double E, F, K, ro, G, H;
 		double t5, t_ok;
+	
+		if(transMatrix.size()!=12) return false;
+		
+		Nx=transMatrix[0];
+		Ox=transMatrix[1];
+		Ax=transMatrix[2];
+		Ny=transMatrix[3];
+		Oy=transMatrix[4];
+		Ay=transMatrix[5];
+		Nz=transMatrix[6];
+		//Oz=transMatrix[7];
+		Az=transMatrix[8];
+		Px=transMatrix[9];
+		Py=transMatrix[10];
+		Pz=transMatrix[11];
 
-		// Wczytanie zadanej pozycji z strumienia wejsciowego	
-		sinput >>Nx;
-		sinput >>Ox;
-		sinput >>Ax;
-		sinput >>Ny;
-		sinput >>Oy;
-		sinput >>Ay;
-		sinput >>Nz;
-		sinput >>Oz;
-		sinput >>Az;
-		sinput >> Px;
-		sinput >> Py;
-		sinput >> Pz;
 		Pz -= z_offset_const;
 		Pz-= d6*Az;
 		Py-= d6*Ay;
 		Px-= d6*Ax;
-		
-		//std::cout << Nx << "  " << Ox << "  " << Ax << "  " << Px << "\n"; 
-		//std::cout << Ny << "  " << Oy << "  " << Ay << "  " << Py << "\n"; 
-		//std::cout << Nz << "  " << Oz << "  " << Az << "  " << Pz << "\n"; 
 
 		//  Wyliczenie Theta1.
-		(local_desired_joints)[0] = (atan2(Py, Px));
-		s0 = sin((double) (local_desired_joints)[0]);
-		c0 = cos((double) (local_desired_joints)[0]);
+		(dstJoints)[0] = (atan2(Py, Px));
+		s0 = sin((double) (dstJoints)[0]);
+		c0 = cos((double) (dstJoints)[0]);
 
 		// Wyliczenie sin Theta5.
 		c4 = Ay * c0 - Ax * s0;
@@ -121,26 +157,26 @@ protected:
 			printf("Osobliwosc p\n");	//Jeden z stawow ustawiam jaka stala wartosc i do niej dobieram druga 
 			osobliwosc = true;
 			// W przypadku osobliwosci katowi theta4 przypisywana wartosc poprzednia.
-			(local_desired_joints)[3] = 0.4;
+			(dstJoints)[3] = 0.4;
 			t5 = atan2(c0 * Nx + s0 * Ny, c0 * Ox + s0 * Oy);
-			(local_desired_joints)[5] = t5-(local_desired_joints)[3];
+			(dstJoints)[5] = t5-(dstJoints)[3];
 		}
 		else 
 		{
 			t5 = atan2(-s0 * Ox + c0 * Oy, s0 * Nx - c0 * Ny);
-			(local_desired_joints)[5] = t5;
+			(dstJoints)[5] = t5;
 
 			t_ok = atan2(c0 * Ax + s0 * Ay, Az);
 
 			if (fabs((double)(t_ok )) > fabs((double)(t_ok - M_PI ))) t_ok = t_ok - M_PI;
 			if (fabs((double)(t_ok )) > fabs((double)(t_ok + M_PI )))
 			  t_ok = t_ok + M_PI;
-			(local_desired_joints)[3] = t_ok;
+			(dstJoints)[3] = t_ok;
 		}  //: else
 
 		// Wyliczenie Theta2.
-		c3 = cos((double)(local_desired_joints)[3]);
-		s3 = sin((double)(local_desired_joints)[3]);
+		c3 = cos((double)(dstJoints)[3]);
+		s3 = sin((double)(dstJoints)[3]);
 
 		E = c0 * Px + s0 * Py - c3 * d5;
 		F = -Pz - s3 * d5;
@@ -149,55 +185,46 @@ protected:
 		K = E * E + F * F + a2 * a2 - a3 * a3;
 		ro = sqrt(G * G + H * H);
 
-		(local_desired_joints)[1] = atan2(K / ro, sqrt(1 - ((K * K) / (ro * ro))))
+		(dstJoints)[1] = atan2(K / ro, sqrt(1 - ((K * K) / (ro * ro))))
 		  - atan2(G, H);
 
 		// Wyliczenie Theta3.
-		s1 = sin((double)(local_desired_joints)[1]);
-		c1 = cos((double)(local_desired_joints)[1]);
-		(local_desired_joints)[2] = atan2(F - a2 * s1, E - a2 * c1);
+		s1 = sin((double)(dstJoints)[1]);
+		c1 = cos((double)(dstJoints)[1]);
+		(dstJoints)[2] = atan2(F - a2 * s1, E - a2 * c1);
 
 		//Wyznaczenie do konca Theta5
 		if(fabs(c3) > EPS) s4=Az/c3;
 		else s4=(c1*Ax+s1*Ay)/s3;
 
-		(local_desired_joints)[4] = atan2(s4, c4);
+		(dstJoints)[4] = atan2(s4, c4);
 
 		// poprawka w celu dostosowania do konwencji DH
-		(local_desired_joints)[2] -= (local_desired_joints)[1] + M_PI_2;
-		(local_desired_joints)[3] -= (local_desired_joints)[2]
-		  + (local_desired_joints)[1] + M_PI_2;
+		(dstJoints)[2] -= (dstJoints)[1] + M_PI_2;
+		(dstJoints)[3] -= (dstJoints)[2]
+		  + (dstJoints)[1] + M_PI_2;
 	
 	
 		//Korekty do Theta 3 i Theta 6
-		if(local_desired_joints[4]<-0.5) local_desired_joints[4]+=2*M_PI;
+		if(dstJoints[4]<-0.5) dstJoints[4]+=2*M_PI;
 	
-		double c5 = cos(local_desired_joints[5]);
-		double s5 = sin(local_desired_joints[5]);
+		double c5 = cos(dstJoints[5]);
+		double s5 = sin(dstJoints[5]);
 		
-		if(fabs(c3*c4*c5-s3*s5-Nz) > EPS && !osobliwosc) local_desired_joints[5]-=M_PI;
+		if(fabs(c3*c4*c5-s3*s5-Nz) > EPS && !osobliwosc) dstJoints[5]-=M_PI;	
 		
-		//Wypisanie wyniku do strumienia
-		sout << local_desired_joints[0];
-		sout << " ";
-		sout << local_desired_joints[1];
-		sout << " ";
-		sout << local_desired_joints[2];
-		sout << " ";
-		sout << local_desired_joints[3];
-		sout << " ";
-		sout << local_desired_joints[4];
-		sout << " ";
-		sout << local_desired_joints[5];
-		return true;	
+		return true;
 	}
 
 	private:
+
+	const double EPS;
 
 	double a2;
 	double a3;
 	double d5;
 	double d6;
+	double z_offset_const;
 };
 
 #ifdef RAVE_REGISTER_BOOST
