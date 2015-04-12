@@ -68,17 +68,7 @@ def solveFKPost(env,robot):
 	strResult = prob.SendCommand('fkSolvePost' + arguments) # whole list as a string
 
 
-def solveIKPost(env,robot,goalRQ,goalT):
-	#Getting current Joints of robot
-	currentJoint1 = robot.GetJoint('Irp6pmJoint1').GetValue(0)
-	currentJoint2 = robot.GetJoint('Irp6pmJoint2').GetValue(0)
-	currentJoint3 = robot.GetJoint('Irp6pmJoint3').GetValue(0)
-	currentJoint4 = robot.GetJoint('Irp6pmJoint4').GetValue(0)
-	currentJoint5 = robot.GetJoint('Irp6pmJoint5').GetValue(0)
-	currentJoint6 = robot.GetJoint('Irp6pmJoint6').GetValue(0)
-	
-	#Convert data to stream/string
-	currentJoints =  str(currentJoint1) + "  " + str(currentJoint2) + "  " + str(currentJoint3) + "  " + str(currentJoint4) + "  " + str(currentJoint5) + "  " + str(currentJoint6)
+def solveIKPost(env,goalRQ,goalT):
 	
 	goalRM = quaternion_to_matrix(goalRQ);
 	
@@ -87,7 +77,7 @@ def solveIKPost(env,robot,goalRQ,goalT):
 		desiredPosition = desiredPosition + " " + str(i)
 	for i in goalT:
 		desiredPosition = desiredPosition + " " + str(i)
-	arguments = " " + currentJoints + " " + desiredPosition
+	arguments = " " + desiredPosition
 
 	#Call plugin 
 	prob = RaveCreateModule(env,"irp6kinematic")
