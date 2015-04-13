@@ -19,6 +19,7 @@
 
 #include <openrave/planningutils.h>
 #include <cstdlib>
+#include <limits>
 
 
 #include <sstream>
@@ -31,6 +32,7 @@ public:
     {
 		__description=":Interface Author: Rosen Diankov\n\nSimple text-based server using sockets.";
 		RegisterCommand("solveIKPost",boost::bind(&Irp6Kinematic::solveIKPost, this,_1,_2),"solves ik for postument");
+		RegisterCommand("solveIKTrack",boost::bind(&Irp6Kinematic::solveIKTrack, this,_1,_2),"solves ik for track");
         //RegisterCommand("fkSolvePost",boost::bind(&Irp6Kinematic::fkSolvePost, this,_1,_2),"solves fk for postument");
         
 		a2 = 0.455;
@@ -63,6 +65,54 @@ public:
 
 	
 protected:
+	bool solveIKTrack(ostream& sout, istream& sinput)
+	{
+		std::vector<double> dstJoints(7);
+		std::vector<double> manipDstJoints(6); // rozwiazanie manipulatora bez tor jezdnego
+
+		// Wczytanie zadanej pozycji z strumienia wejsciowego	
+		std::vector<double> transMatrix;
+		for(int i=0; i<12;i++)
+		{
+			double tmp;
+			sinput >> tmp;
+			transMatrix.push_back(tmp);
+		}
+		double Py=transMatrix[10];
+		bool foundSolution=false;
+		
+		for(double j0=0;j0<1.2;j0+=0.05)
+		{
+			transMatrix[10]=Py-j0;
+			foundSolution = solveIKIrp6(transMatrix,manipDstJoints);
+			if(foundSolution)
+			{
+				dstJoints[0]=j0;
+				dstJoints[1]=manipDstJoints[0];
+				dstJoints[2]=manipDstJoints[1];
+				dstJoints[3]=manipDstJoints[2];
+				dstJoints[4]=manipDstJoints[3];
+				dstJoints[5]=manipDstJoints[4];
+				dstJoints[6]=manipDstJoints[5];
+				break;
+			}
+		}
+		//Wypisanie wyniku do strumienia
+		sout << dstJoints[0];
+		sout << " ";
+		sout << dstJoints[1];
+		sout << " ";
+		sout << dstJoints[2];
+		sout << " ";
+		sout << dstJoints[3];
+		sout << " ";
+		sout << dstJoints[4];
+		sout << " ";
+		sout << dstJoints[5];
+		sout << " ";
+		sout << dstJoints[6];
+		return foundSolution;			
+	}
 	bool solveIKPost(ostream& sout, istream& sinput)
 	{
 		
@@ -213,7 +263,16 @@ protected:
 		
 		if(fabs(c3*c4*c5-s3*s5-Nz) > EPS && !osobliwosc) dstJoints[5]-=M_PI;	
 		
-		return true;
+		//czy ktorakolwiek wartosc to NaN
+		if(isnan(dstJoints[0]) || isnan(dstJoints[1]) || isnan(dstJoints[2]) || isnan(dstJoints[3]) || isnan(dstJoints[4]) || isnan(dstJoints[5])) return false;
+		//czy rozwiazanie zawiera sie w limitach
+		else if( -2.96705973> 	dstJoints[0]	||	dstJoints[0]	>	2.96705973)		return false; //Joint 1
+		else if( -1.8		>	dstJoints[1]	||	dstJoints[1]	>	-0.872664626)	return false; //Joint 2
+		else if( -0.3		>	dstJoints[2]	||	dstJoints[2]	>	0.5)			return false; //Joint 3
+		else if( -1.57		>	dstJoints[3]	||	dstJoints[3]	>	1.57)			return false; //Joint 4
+		else if( -0.5		>	dstJoints[4]	||	dstJoints[4]	>	5.14)			return false; //Joint 5
+		else if( -3.0		>	dstJoints[5]	||	dstJoints[5]	>	2.9)			return false; //Joint 6
+		else return true;
 	}
 
 	private:

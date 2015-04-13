@@ -67,3 +67,27 @@ def solveIKPost(env,goalRQ,goalT):
 		result.append(float(i))
 	return result
 	
+def solveIKTrack(env,goalRQ,goalT):
+	
+	goalRM = quaternion_to_matrix(goalRQ);
+	
+	desiredPosition=""
+	for i in goalRM:
+		desiredPosition = desiredPosition + " " + str(i)
+	for i in goalT:
+		desiredPosition = desiredPosition + " " + str(i)
+	arguments = " " + desiredPosition
+
+	#Call plugin 
+	prob = RaveCreateModule(env,"irp6kinematic")
+	env.AddModule(prob,args='')
+	strResult = prob.SendCommand('solveIKTrack' + arguments) # whole list as a string
+	#print strResult
+	
+	#convert string to list of numbers
+	sresult = strResult.split() # list of strings
+	result = [] # list of numbers
+	for i in sresult:
+		result.append(float(i))
+	return result
+	
