@@ -1,0 +1,9 @@
+<KinBody name="conveyor">
+<Translation>0.85 0 0.50</Translation>
+<Body type="static">
+  <Geom type="box">
+	<extents>0.35 2.40 0.55</extents>
+	<diffuseColor>.64 .64 .64</diffuseColor>
+  </Geom>
+</Body>
+</KinBody>
