@@ -33,7 +33,8 @@ public:
 		__description=":Interface Author: Rosen Diankov\n\nSimple text-based server using sockets.";
 		RegisterCommand("solveIKPost",boost::bind(&Irp6Kinematic::solveIKPost, this,_1,_2),"solves ik for postument");
 		RegisterCommand("solveIKTrack",boost::bind(&Irp6Kinematic::solveIKTrack, this,_1,_2),"solves ik for track");
-        //RegisterCommand("fkSolvePost",boost::bind(&Irp6Kinematic::fkSolvePost, this,_1,_2),"solves fk for postument");
+        RegisterCommand("solveFKPost",boost::bind(&Irp6Kinematic::solveFKPost, this,_1,_2),"solves fk for postument");
+        RegisterCommand("solveFKTrack",boost::bind(&Irp6Kinematic::solveFKTrack, this,_1,_2),"solves fk for track");
         
 		a2 = 0.455;
 		a3 = 0.67;
@@ -97,6 +98,7 @@ protected:
 				break;
 			}
 		}
+		
 		//Wypisanie wyniku do strumienia
 		sout << dstJoints[0];
 		sout << " ";
@@ -113,6 +115,55 @@ protected:
 		sout << dstJoints[6];
 		return foundSolution;			
 	}
+
+	bool solveFKTrack(ostream& sout, istream& sinput)
+	{
+		std::vector<double> transMatrix;
+
+		// Wczytanie zadanej pozycji z strumienia wejsciowego	
+		std::vector<double> joints;
+		double track;
+		
+		sinput >> track;
+		for(int i=0; i<6;i++)
+		{
+			double tmp;
+			sinput >> tmp;
+			joints.push_back(tmp);
+		}
+		
+		bool foundSolution = solveFKIrp6(joints,transMatrix);
+		transMatrix[10]+=track;
+		
+		//Wypisanie wyniku do strumienia
+		sout << transMatrix[0];
+		sout << " ";
+		sout << transMatrix[1];
+		sout << " ";
+		sout << transMatrix[2];
+		sout << " ";
+		sout << transMatrix[3];
+		sout << " ";
+		sout << transMatrix[4];
+		sout << " ";
+		sout << transMatrix[5];
+		sout << " ";
+		sout << transMatrix[6];
+		sout << " ";
+		sout << transMatrix[7];
+		sout << " ";
+		sout << transMatrix[8];
+		sout << " ";
+		sout << transMatrix[9];
+		sout << " ";
+		sout << transMatrix[10];
+		sout << " ";		
+		sout << transMatrix[11];
+
+		return foundSolution;	
+	}
+
+
 	bool solveIKPost(ostream& sout, istream& sinput)
 	{
 		
@@ -142,6 +193,96 @@ protected:
 		sout << " ";
 		sout << dstJoints[5];
 		return foundSolution;	
+	}
+	
+	bool solveFKPost(ostream& sout, istream& sinput)
+	{
+		std::vector<double> transMatrix;
+
+		// Wczytanie zadanej pozycji z strumienia wejsciowego	
+		std::vector<double> joints;
+		for(int i=0; i<6;i++)
+		{
+			double tmp;
+			sinput >> tmp;
+			joints.push_back(tmp);
+		}
+		
+		bool foundSolution = solveFKIrp6(joints,transMatrix);
+		
+		//Wypisanie wyniku do strumienia
+		sout << transMatrix[0];
+		sout << " ";
+		sout << transMatrix[1];
+		sout << " ";
+		sout << transMatrix[2];
+		sout << " ";
+		sout << transMatrix[3];
+		sout << " ";
+		sout << transMatrix[4];
+		sout << " ";
+		sout << transMatrix[5];
+		sout << " ";
+		sout << transMatrix[6];
+		sout << " ";
+		sout << transMatrix[7];
+		sout << " ";
+		sout << transMatrix[8];
+		sout << " ";
+		sout << transMatrix[9];
+		sout << " ";
+		sout << transMatrix[10];
+		sout << " ";		
+		sout << transMatrix[11];
+
+		return foundSolution;	
+	}
+	
+	bool solveFKIrp6( std::vector<double> jointValues, std::vector<double>& transMatrix)
+	{
+	
+	transMatrix.clear();
+	transMatrix = std::vector<double>(12);
+		
+	// poprawka w celu uwzglednienia konwencji DH
+
+	jointValues[2] += jointValues[1] + M_PI_2;
+	jointValues[3] += jointValues[2];
+
+	// Parametry pomocnicze - przeliczenie zmiennych.
+	const double s1 = sin(static_cast<double>(jointValues[0]));
+	const double c1 = cos(static_cast<double>(jointValues[0]));
+	const double s2 = sin(static_cast<double>(jointValues[1]));
+	const double c2 = cos(static_cast<double>(jointValues[1]));
+	const double s3 = sin(static_cast<double>(jointValues[2]));
+	const double c3 = cos(static_cast<double>(jointValues[2]));
+	const double s4 = sin(static_cast<double>(jointValues[3]));
+	const double c4 = cos(static_cast<double>(jointValues[3]));
+	const double s5 = sin(static_cast<double>(jointValues[4]));
+	const double c5 = cos(static_cast<double>(jointValues[4]));
+	const double s6 = sin(static_cast<double>(jointValues[5]));
+	const double c6 = cos(static_cast<double>(jointValues[5]));
+
+	// Proste zadanie kinematyki.
+	transMatrix[0] =  (c1 *  s4 * c5 + s1 * s5) * c6 + c1 * c4 * s6;	// NX
+	transMatrix[1] = -(c1 *  s4 * c5 + s1 * s5) * s6 + c1 * c4 * c6;	// OX
+	transMatrix[2] =   c1 *  s4 * s5 - s1 * c5;							// AX
+	transMatrix[9] =   c1 * (a2 * c2 + a3 * c3  + d5 * c4);  			// PX
+	transMatrix[3] =  (s1 *  s4 * c5 - c1 * s5) * c6 + s1 * c4 * s6;	// NY2
+	transMatrix[4] = -(s1 *  s4 * c5 - c1 * s5) * s6 + s1 * c4 * c6;	// OY
+	transMatrix[5] =   s1 *  s4 * s5 + c1 * c5;							// AY
+	transMatrix[10] =   s1 * (a2 * c2 + a3 * c3  + d5 * c4);			// PY
+	transMatrix[6] =   c4 *  c5 * c6 - s4 * s6;							// NZ
+	transMatrix[7] = - c4 *  c5 * s6 - s4 * c6;							// OZ
+	transMatrix[8] =   c4 *  s5;										// AZ
+	transMatrix[11] = - a2 *  s2 - a3 * s3 - d5  * s4 + z_offset_const;	// PZ
+	
+	transMatrix[11]+= d6*transMatrix[8]; //Pz-= d6*Az;
+	transMatrix[10]+= d6*transMatrix[5]; //Py-= d6*Ay;
+	transMatrix[9] += d6*transMatrix[2]; //Px-= d6*Ax;
+	
+	return true;
+	
 	}
 	
 	bool solveIKIrp6( std::vector<double> transMatrix, std::vector<double>& dstJoints)
