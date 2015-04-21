@@ -128,4 +128,35 @@ class Irp6Kinematic:
 		for i in sresult:
 			result.append(float(i))
 		return result
+
+	def solveRelativeIKPost(self,rotation,translation):
+		self.robot.SetActiveManipulator('postument');
 		
+		currentJoint1 = self.robot.GetJoint('Irp6pmJoint1').GetValue(0)
+		currentJoint2 = self.robot.GetJoint('Irp6pmJoint2').GetValue(0)
+		currentJoint3 = self.robot.GetJoint('Irp6pmJoint3').GetValue(0)
+		currentJoint4 = self.robot.GetJoint('Irp6pmJoint4').GetValue(0)
+		currentJoint5 = self.robot.GetJoint('Irp6pmJoint5').GetValue(0)
+		currentJoint6 = self.robot.GetJoint('Irp6pmJoint6').GetValue(0)
+		#Convert data to stream/string
+		currentJoints =  str(currentJoint1) + "  " + str(currentJoint2) + "  " + str(currentJoint3) + "  " + str(currentJoint4) + "  " + str(currentJoint5) + "  " + str(currentJoint6)
+		
+		arguments = " " + currentJoints
+		
+		desiredPosition=""
+		for i in translation:
+			desiredPosition = desiredPosition + " " + str(i)
+		for i in rotation:
+			desiredPosition = desiredPosition + " " + str(i)
+		arguments = arguments + " " + desiredPosition
+
+		#Call plugin 
+		strResult = self.prob.SendCommand('solveRelativeIKPost' + arguments) # whole list as a string
+		#print strResult
+		
+		#convert string to list of numbers
+		sresult = strResult.split() # list of strings
+		result = [] # list of numbers
+		for i in sresult:
+			result.append(float(i))
+		return result		
