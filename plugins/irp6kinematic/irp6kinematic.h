@@ -35,7 +35,8 @@ public:
 		RegisterCommand("solveIKTrack",boost::bind(&Irp6Kinematic::solveIKTrack, this,_1,_2),"solves ik for track");
         RegisterCommand("solveFKPost",boost::bind(&Irp6Kinematic::solveFKPost, this,_1,_2),"solves fk for postument");
         RegisterCommand("solveFKTrack",boost::bind(&Irp6Kinematic::solveFKTrack, this,_1,_2),"solves fk for track");
-        RegisterCommand("solveRelativeIKPost",boost::bind(&Irp6Kinematic::solveRelativeIKPost, this,_1,_2),"solves relative ik for track");
+        RegisterCommand("solveRelativeIKPost",boost::bind(&Irp6Kinematic::solveRelativeIKPost, this,_1,_2),"solves relative ik for postument");
+        RegisterCommand("solveRelativeIKTrack",boost::bind(&Irp6Kinematic::solveRelativeIKTrack, this,_1,_2),"solves relative ik for track");
         
 		a2 = 0.455;
 		a3 = 0.67;
@@ -72,10 +73,11 @@ public:
 	{
 		std::vector<double> transMatrix;
 
-		// Wczytanie zadanej pozycji z strumienia wejsciowego	
+		// Loading data from stream	
 		std::vector<double> joints;
 		double track;
 		
+			//we split track position from other manipulator joints
 		sinput >> track;
 		for(int i=0; i<6;i++)
 		{
@@ -84,10 +86,11 @@ public:
 			joints.push_back(tmp);
 		}
 		
+		//finding solition
 		bool foundSolution = solveFKIrp6(joints,transMatrix);
 		transMatrix[10]+=track;
 		
-		//Wypisanie wyniku do strumienia
+		//Solution to stream
 		sout << transMatrix[0];
 		sout << " ";
 		sout << transMatrix[1];
@@ -120,7 +123,7 @@ public:
 		std::vector<double> dstJoints(7);
 		std::vector<double> manipDstJoints(6); // rozwiazanie manipulatora bez tor jezdnego
 
-		// Wczytanie zadanej pozycji z strumienia wejsciowego	
+		// Loading data from stream
 		std::vector<double> transMatrix;
 		for(int i=0; i<12;i++)
 		{
@@ -131,10 +134,12 @@ public:
 		double Py=transMatrix[10];
 		bool foundSolution=false;
 		
-		for(double j0=0;j0<1.2;j0+=0.05)
+		//Searching IK solution
+		for(double j0=0;j0<1.2;j0+=0.05) //if couldn't find solution for this joint0 position we are moving it forward
 		{
 			transMatrix[10]=Py-j0;
 			foundSolution = solveIKIrp6(transMatrix,manipDstJoints);
+			//if solution found we return it
 			if(foundSolution)
 			{
 				dstJoints[0]=j0;
@@ -148,7 +153,7 @@ public:
 			}
 		}
 		
-		//Wypisanie wyniku do strumienia
+		//Solution to stream
 		sout << dstJoints[0];
 		sout << " ";
 		sout << dstJoints[1];
@@ -165,12 +170,13 @@ public:
 		return foundSolution;			
 	}
 
-	bool solveFKPost(ostream& sout, istream& sinput)
+	bool solveRelativeIKTrack(ostream& sout, istream& sinput)
 	{
-		std::vector<double> transMatrix;
-
-		// Wczytanie zadanej pozycji z strumienia wejsciowego	
+		// Loading data from stream	
 		std::vector<double> joints;
+		double track;
+		
+		sinput >> track;
 		for(int i=0; i<6;i++)
 		{
 			double tmp;
@@ -178,9 +184,108 @@ public:
 			joints.push_back(tmp);
 		}
 		
+		double x,y,z;
+		double a,b,c;
+		
+		sinput >> x;sinput >> y;sinput >> z;
+		sinput >> a;sinput >> b;sinput >> c;
+		double ca=cos(a), cb=cos(b), cc=cos(c);
+		double sa=sin(a), sb=sin(b), sc=sin(c);
+		
+		//Creating transformation matrix
+		
+		/*	ca cB		ca sb sc-sa cc		ca sb cc+sa sc		x
+		* 	sa cb		sa sb sc+ca cc		sa sb cc-ca sc		y
+		* 	-sb			cb sc				cb cc				z
+		*	0			0					0					1
+		* 
+		*   tm(0)	tm(1)	tm(2)	tm(9)
+		*	tm(3)	tm(4)	tm(5)	tm(10)
+		*	tm(6)	tm(7)	tm(8)	tm(11) */
+		
+		std::vector<double> transMatrix(12);
+		transMatrix[0] = ca*cb;
+		transMatrix[1] = ca*sb*sc-sa*cc;
+		transMatrix[2] = ca*sb*sc-sa*cc;
+		transMatrix[3] = sa*cb;
+		transMatrix[4] = sa*sb*sc+ca*cc;
+		transMatrix[5] = sa*sb*cc-ca*sc;
+		transMatrix[6] = -sb;
+		transMatrix[7] = cb*sc;
+		transMatrix[8] = cb*cc;
+		transMatrix[9] = x;
+		transMatrix[10]= y;
+		transMatrix[11]= z;
+		
+
+		//Creating end effector transformation matrix
+		std::vector<double> endEffMatrix(12);
+		
+		solveFKIrp6(joints,endEffMatrix);
+		endEffMatrix[10]+=track;
+		
+		//Multiple matrixes (performing end effector transformation)
+		std::vector<double> mulMatrix;
+		multiplicateMatrixes(endEffMatrix,transMatrix,mulMatrix);
+		
+		//Searching IK solution for new position
+		std::vector<double> manipDstJoints(6);
+		std::vector<double> dstJoints(7);
+		
+		double Py=mulMatrix[10];
+		bool foundSolution=false;
+		
+		for(double j0=0;j0<1.2;j0+=0.05)
+		{
+			mulMatrix[10]=Py-j0;
+			foundSolution = solveIKIrp6(mulMatrix,manipDstJoints);
+			if(foundSolution)
+			{
+				dstJoints[0]=j0;
+				dstJoints[1]=manipDstJoints[0];
+				dstJoints[2]=manipDstJoints[1];
+				dstJoints[3]=manipDstJoints[2];
+				dstJoints[4]=manipDstJoints[3];
+				dstJoints[5]=manipDstJoints[4];
+				dstJoints[6]=manipDstJoints[5];
+				break;
+			}
+		}
+		
+		
+		//IK solution to stream
+		sout << dstJoints[0];
+		sout << " ";
+		sout << dstJoints[1];
+		sout << " ";
+		sout << dstJoints[2];
+		sout << " ";
+		sout << dstJoints[3];
+		sout << " ";
+		sout << dstJoints[4];
+		sout << " ";
+		sout << dstJoints[5];
+		sout << " ";
+		sout << dstJoints[6];
+		return foundSolution;	
+	}
+
+	bool solveFKPost(ostream& sout, istream& sinput)
+	{
+		std::vector<double> transMatrix;
+
+		// Loading data from stream
+		std::vector<double> joints;
+		for(int i=0; i<6;i++)
+		{
+			double tmp;
+			sinput >> tmp;
+			joints.push_back(tmp);
+		}
+		//finding solition
 		bool foundSolution = solveFKIrp6(joints,transMatrix);
 		
-		//Wypisanie wyniku do strumienia
+		//Solution to stream
 		sout << transMatrix[0];
 		sout << " ";
 		sout << transMatrix[1];
@@ -213,7 +318,7 @@ public:
 		
 		std::vector<double> dstJoints(6);
 
-		// Wczytanie zadanej pozycji z strumienia wejsciowego	
+		// Loading data from stream	
 		std::vector<double> transMatrix;
 		for(int i=0; i<12;i++)
 		{
@@ -222,9 +327,10 @@ public:
 			transMatrix.push_back(tmp);
 		}
 		
+		//finding solution
 		bool foundSolution = solveIKIrp6(transMatrix,dstJoints);
 		
-		//Wypisanie wyniku do strumienia
+		//solution to stream
 		sout << dstJoints[0];
 		sout << " ";
 		sout << dstJoints[1];
@@ -241,9 +347,7 @@ public:
 
 	bool solveRelativeIKPost(ostream& sout, istream& sinput)
 	{
-		std::vector<double> endEffMatrix(12);
-
-		// Wczytanie zadanej pozycji z strumienia wejsciowego	
+		// Loading data from stream	
 		std::vector<double> joints;
 		for(int i=0; i<6;i++)
 		{
@@ -257,7 +361,7 @@ public:
 		
 		sinput >> x;sinput >> y;sinput >> z;
 		sinput >> a;sinput >> b;sinput >> c;
-		
+
 		double ca=cos(a), cb=cos(b), cc=cos(c);
 		double sa=sin(a), sb=sin(b), sc=sin(c);
 		
@@ -284,18 +388,21 @@ public:
 		transMatrix[10]= y;
 		transMatrix[11]= z;
 		
-		std::vector<double> mulMatrix;
-		
+		//Finding end effector transformation
+		std::vector<double> endEffMatrix(12);
 		solveFKIrp6(joints,endEffMatrix);
 		
+		//Multiple matrixes (performing end effector transformation)
+		std::vector<double> mulMatrix;
 		multiplicateMatrixes(endEffMatrix,transMatrix,mulMatrix);
 
-		for(int i=0;i<12;i++) std::cout << endEffMatrix[i] << "  ";
+		/*for(int i=0;i<12;i++) std::cout << endEffMatrix[i] << "  ";
 		std::cout << "\n";
 		
 		for(int i=0;i<12;i++) std::cout << mulMatrix[i] << "  ";
-		std::cout << "\n";
+		std::cout << "\n";*/
 		
+		//finding IK solution for new position
 		std::vector<double> dstJoints(6);
 		bool foundSolution = solveIKIrp6(mulMatrix,dstJoints);
 		
@@ -481,6 +588,8 @@ public:
 		
 		if(fabs(c3*c4*c5-s3*s5-Nz) > EPS && !osobliwosc) dstJoints[5]-=M_PI;	
 		
+		if(dstJoints[5]<-3.0) dstJoints[5]+=2*M_PI;
+		else if(dstJoints[5]>3.0) dstJoints[5]-=2*M_PI;
 		//czy ktorakolwiek wartosc to NaN
 		if(isnan(dstJoints[0]) || isnan(dstJoints[1]) || isnan(dstJoints[2]) || isnan(dstJoints[3]) || isnan(dstJoints[4]) || isnan(dstJoints[5])) return false;
 		//czy rozwiazanie zawiera sie w limitach
@@ -488,8 +597,8 @@ public:
 		else if( -1.8		>	dstJoints[1]	||	dstJoints[1]	>	-0.872664626)	return false; //Joint 2
 		else if( -0.3		>	dstJoints[2]	||	dstJoints[2]	>	0.5)			return false; //Joint 3
 		else if( -1.57		>	dstJoints[3]	||	dstJoints[3]	>	1.57)			return false; //Joint 4
-		else if( -0.5		>	dstJoints[4]	||	dstJoints[4]	>	5.14)			return false; //Joint 5
-		else if( -3.0		>	dstJoints[5]	||	dstJoints[5]	>	2.9)			return false; //Joint 6
+		else if( -5.5		>	dstJoints[4]	||	dstJoints[4]	>	5.14)			return false; //Joint 5
+		else if( -2.8		>	dstJoints[5]	||	dstJoints[5]	>	2.8)			return false; //Joint 6
 		else return true;
 	}
 
