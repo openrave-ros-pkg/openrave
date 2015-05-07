@@ -62,9 +62,15 @@ class Irp6Kinematic:
 		output = self.prob.SendCommand('solveFKPost' + arguments) # whole list as a string
 		
 		#convert string to list of numbers
-		result = self.string_to_list(output)
-		
-		return result
+		#convert string to list of numbers
+		r = self.string_to_list(output)
+				
+		return numpy.array([
+		[ r[0] ,	r[1],	r[2],	r[9]  ],
+		[ r[3] ,	r[4],	r[5],	r[10] ],
+		[ r[6] ,	r[7],	r[8],	r[11] ],
+		[ 0    ,	0   ,	0   ,	1     ]
+		])
 		
 	def solveFKTrack(self):
 		self.robot.SetActiveManipulator('track');
@@ -85,9 +91,14 @@ class Irp6Kinematic:
 		output = self.prob.SendCommand('solveFKTrack' + arguments) # whole list as a string
 		
 		#convert string to list of numbers
-		result = self.string_to_list(output)
-		
-		return result
+		r = self.string_to_list(output)
+				
+		return numpy.array([
+		[ r[0] ,	r[1],	r[2],	r[9]  ],
+		[ r[3] ,	r[4],	r[5],	r[10] ],
+		[ r[6] ,	r[7],	r[8],	r[11] ],
+		[ 0    ,	0   ,	0   ,	1     ]
+		])
 
 
 	def solveIKPost(self,goalRQ,goalT):
