@@ -597,7 +597,7 @@ public:
 		else if( -1.8		>	dstJoints[1]	||	dstJoints[1]	>	-0.872664626)	return false; //Joint 2
 		else if( -0.3		>	dstJoints[2]	||	dstJoints[2]	>	0.5)			return false; //Joint 3
 		else if( -1.57		>	dstJoints[3]	||	dstJoints[3]	>	1.57)			return false; //Joint 4
-		else if( -5.5		>	dstJoints[4]	||	dstJoints[4]	>	5.14)			return false; //Joint 5
+		else if(  0.5		>	dstJoints[4]	||	dstJoints[4]	>	5.14)			return false; //Joint 5
 		else if( -2.8		>	dstJoints[5]	||	dstJoints[5]	>	2.8)			return false; //Joint 6
 		else return true;
 	}
