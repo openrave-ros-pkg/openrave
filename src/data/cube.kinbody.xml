@@ -1,0 +1,10 @@
+<KinBody name="cube">
+  <Body name = "rubikCube" type="dynamic">
+      <Geom type="box">
+		<RotationAxis>0 0 1 45</RotationAxis>
+        <extents>0.04 0.04 0.04</extents>
+        <translation>0.00 0.0 0.02</translation>
+        <diffusecolor>1 0 0</diffusecolor>
+      </Geom>    
+  </Body>
+</KinBody>
